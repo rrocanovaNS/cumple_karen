@@ -208,6 +208,16 @@
       margin-top: 1.5rem;
     }
 
+    .empty-state {
+      margin-top: 1.5rem;
+      padding: 1.2rem;
+      border: 1px dashed rgba(212, 163, 115, 0.35);
+      border-radius: 12px;
+      color: var(--text-muted);
+      text-align: center;
+      background: rgba(31, 20, 14, 0.35);
+    }
+
     .media-item {
       aspect-ratio: 1 / 1;
       border-radius: 12px;
@@ -404,6 +414,7 @@
 
         <!-- Galería de Recuerdos -->
         <h4 style="margin-top: 2rem; color: var(--accent-gold);">Recuerdos Subidos</h4>
+        <div class="empty-state" id="empty-recuerdos">No existen recuerdos aún.</div>
         <div class="media-grid" id="grid-recuerdos"></div>
       </div>
     </section>
@@ -459,6 +470,7 @@
   <script>
     // --- 1. BASE DE DATOS LOCAL INTEGRADA (IndexedDB) ---
     let db = null;
+    let uploadedMemoriesRequestId = 0;
     const DB_NAME = "Karen50MediaDB";
     const STORE_NAME = "elementos";
 
@@ -538,6 +550,54 @@
       }
     }
 
+    async function loadUploadedMemories() {
+      const grid = document.getElementById('grid-recuerdos');
+      const emptyState = document.getElementById('empty-recuerdos');
+
+      if (!grid || !emptyState) return;
+
+      const requestId = ++uploadedMemoriesRequestId;
+
+      grid.innerHTML = '';
+      emptyState.textContent = 'Cargando recuerdos...';
+      emptyState.style.display = 'block';
+
+      try {
+        const response = await fetch('/api/list.php', {
+          cache: 'no-store'
+        });
+        const payload = await response.json();
+
+        if (!response.ok || !payload.ok) {
+          throw new Error(payload.error || 'No se pudieron cargar los recuerdos.');
+        }
+
+        if (requestId !== uploadedMemoriesRequestId) {
+          return;
+        }
+
+        const files = Array.isArray(payload.files) ? payload.files.slice() : [];
+        files.sort((left, right) => left.name.localeCompare(right.name));
+
+        if (files.length === 0) {
+          emptyState.textContent = 'No existen recuerdos aún.';
+          return;
+        }
+
+        emptyState.style.display = 'none';
+
+        files.forEach((file) => {
+          renderUploadedMediaItem(grid, file);
+        });
+      } catch (err) {
+        if (requestId !== uploadedMemoriesRequestId) {
+          return;
+        }
+        console.error('Error al cargar recuerdos subidos:', err);
+        emptyState.textContent = 'No se pudieron cargar los recuerdos.';
+      }
+    }
+
     async function deleteItem(id) {
       if (confirm('¿Seguro que deseas eliminar este recuerdo?')) {
         try {
@@ -586,9 +646,69 @@
       container.prepend(wrapper);
     }
 
+    function renderUploadedMediaItem(container, item) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'media-item';
+
+      let element;
+
+      if (item.type === 'image') {
+        element = document.createElement('img');
+        element.src = item.url;
+        element.alt = item.name;
+        element.loading = 'lazy';
+        element.onclick = () => openLightbox('image', item.url);
+      } else {
+        element = document.createElement('video');
+        element.src = item.url;
+        element.controls = true;
+        element.preload = 'metadata';
+        element.onclick = (event) => {
+          if (event.target === element) {
+            openLightbox('video', item.url);
+          }
+        };
+      }
+
+      wrapper.appendChild(element);
+      container.appendChild(wrapper);
+    }
+
+    async function uploadMediaFile(file) {
+      const formData = new FormData();
+      formData.append('file', file, file.name || 'captura');
+
+      const response = await fetch('/api/upload.php', {
+        method: 'POST',
+        body: formData
+      });
+
+      const payload = await response.json();
+
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.error || 'No se pudo subir el archivo.');
+      }
+
+      return payload;
+    }
+
     // Manejador de selección de archivos desde la galería
-    function handleFileInput(files, section) {
+    async function handleFileInput(files, section) {
       if (!files || files.length === 0) return;
+
+      if (section === 'recuerdos') {
+        try {
+          for (const file of Array.from(files)) {
+            await uploadMediaFile(file);
+          }
+          await loadUploadedMemories();
+        } catch (err) {
+          console.error('Error subiendo recuerdos:', err);
+          alert('No se pudo subir uno de los archivos.');
+        }
+        return;
+      }
+
       Array.from(files).forEach(file => {
         const type = file.type.startsWith('image/') ? 'image' : 'video';
         saveMediaToDB(section, type, file);
@@ -641,8 +761,19 @@
 
       canvas.toBlob((blob) => {
         if (blob) {
-          saveMediaToDB(section, 'image', blob);
-          closeCamera();
+          if (section === 'recuerdos') {
+            const capturedFile = new File([blob], 'captura.jpg', { type: 'image/jpeg' });
+            uploadMediaFile(capturedFile)
+              .then(() => loadUploadedMemories())
+              .catch((err) => {
+                console.error('Error subiendo captura:', err);
+                alert('No se pudo subir la fotografía.');
+              })
+              .finally(() => closeCamera());
+          } else {
+            saveMediaToDB(section, 'image', blob);
+            closeCamera();
+          }
         } else {
           alert("Error al tomar la fotografía.");
         }
@@ -692,6 +823,7 @@
     window.addEventListener('DOMContentLoaded', () => {
       // Cargar archivos guardados
       loadStoredMedia();
+      loadUploadedMemories();
 
       // Generar código QR apuntando a camara.html
       const currentUrl = window.location.href.split('?')[0].replace('index.html', '');
@@ -717,7 +849,10 @@
     });
 
     // Recargar galería al volver a la pestaña
-    window.addEventListener('pageshow', loadStoredMedia);
+    window.addEventListener('pageshow', () => {
+      loadStoredMedia();
+      loadUploadedMemories();
+    });
   </script>
 </body>
 </html>
