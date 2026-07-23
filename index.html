@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Una Noche para Recordar - Karen Mis 50</title>
+  
+  <!-- Tipografía (Playfair Display + Montserrat) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600&family=Playfair+Display:ital,wght@0,600;0,800;1,400&display=swap" rel="stylesheet">
+  
+  <!-- Iconos FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    :root {
+      --bg-dark: #1f140e;
+      --bg-card: #2e1e16;
+      --accent-gold: #d4a373;
+      --text-light: #fefae0;
+      --text-muted: #b08968;
+      --brown-medium: #7f5539;
+      --danger: #e63946;
+      --leopard-pattern: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 60 60"><path fill="%237f5539" opacity="0.25" d="M15,10 C10,12 8,18 12,22 C16,26 22,24 20,18 C18,12 20,8 15,10 Z M40,35 C35,37 32,45 38,48 C44,51 48,42 45,38 C42,34 45,33 40,35 Z M45,10 C40,8 38,15 42,18 C46,21 50,14 45,10 Z"/><path fill="%232e1e16" opacity="0.4" d="M13,12 C11,13 10,16 12,18 C16,20 17,19 16,16 Z M41,37 C38,38 37,42 40,44 C43,46 45,41 43,39 Z"/></svg>');
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Montserrat', sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-light);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      text-align: center;
+      padding: 3rem 1rem 2rem;
+      background: linear-gradient(180deg, rgba(31, 20, 14, 0.85), var(--bg-dark)), var(--leopard-pattern);
+      border-bottom: 2px solid var(--accent-gold);
+    }
+
+    header h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 2.8rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+      color: var(--text-light);
+      margin-bottom: 0.5rem;
+    }
+
+    header h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.5rem;
+      font-style: italic;
+      color: var(--accent-gold);
+      font-weight: 400;
+    }
+
+    nav {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      padding: 1rem;
+      background-color: rgba(46, 30, 22, 0.8);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(10px);
+      flex-wrap: wrap;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: 1px solid var(--brown-medium);
+      color: var(--text-light);
+      padding: 0.8rem 1.2rem;
+      border-radius: 30px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .tab-btn:hover {
+      border-color: var(--accent-gold);
+      color: var(--accent-gold);
+    }
+
+    .tab-btn.active {
+      background: var(--leopard-pattern), var(--brown-medium);
+      border-color: var(--accent-gold);
+      color: #fff;
+      box-shadow: 0 4px 15px rgba(212, 163, 115, 0.3);
+    }
+
+    main {
+      max-width: 1100px;
+      width: 90%;
+      margin: 2rem auto;
+      flex: 1;
+    }
+
+    .tab-content {
+      display: none;
+      animation: fadeIn 0.4s ease-in-out;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .section-card {
+      background-color: var(--bg-card);
+      border-radius: 16px;
+      padding: 2rem;
+      border: 1px solid rgba(212, 163, 115, 0.2);
+      margin-bottom: 2rem;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+
+    .section-title {
+      font-family: 'Playfair Display', serif;
+      color: var(--accent-gold);
+      font-size: 1.8rem;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .actions-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.5rem;
+      margin-top: 1.5rem;
+    }
+
+    .action-btn, .btn-camara-link {
+      background: var(--bg-dark);
+      border: 2px dashed var(--accent-gold);
+      border-radius: 12px;
+      padding: 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: background 0.3s, transform 0.2s;
+      color: var(--text-light);
+      text-decoration: none;
+      display: block;
+    }
+
+    .action-btn:hover, .btn-camara-link:hover {
+      background: rgba(127, 85, 57, 0.3);
+      transform: translateY(-3px);
+    }
+
+    .action-btn i, .btn-camara-link i {
+      font-size: 2rem;
+      color: var(--accent-gold);
+      margin-bottom: 0.5rem;
+      display: block;
+    }
+
+    .qr-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      background: linear-gradient(135deg, rgba(127, 85, 57, 0.2), rgba(31, 20, 14, 0.8)), var(--leopard-pattern);
+      padding: 2rem;
+      border-radius: 16px;
+      border: 1px solid var(--accent-gold);
+      margin-bottom: 2rem;
+    }
+
+    .qr-box {
+      background: white;
+      padding: 1rem;
+      border-radius: 12px;
+      margin: 1rem 0;
+    }
+
+    .qr-box canvas, .qr-box img {
+      display: block;
+      margin: 0 auto;
+    }
+
+    /* Galería de Medios */
+    .media-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1.2rem;
+      margin-top: 1.5rem;
+    }
+
+    .media-item {
+      aspect-ratio: 1 / 1;
+      border-radius: 12px;
+      overflow: hidden;
+      position: relative;
+      background-color: var(--bg-dark);
+      border: 1px solid rgba(212, 163, 115, 0.3);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }
+
+    .media-item img, .media-item video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      cursor: pointer;
+      transition: transform 0.3s ease;
+    }
+
+    .media-item:hover img, .media-item:hover video {
+      transform: scale(1.05);
+    }
+
+    .delete-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: rgba(230, 57, 70, 0.85);
+      color: white;
+      border: none;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+      transition: background 0.2s;
+    }
+
+    .delete-btn:hover {
+      background: var(--danger);
+    }
+
+    /* Visor de Cámara */
+    #camera-preview-container {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      margin-top: 1.5rem;
+      background: #000;
+      padding: 1.5rem;
+      border-radius: 12px;
+    }
+
+    #video-feed {
+      width: 100%;
+      max-width: 450px;
+      border-radius: 8px;
+    }
+
+    .capture-btn {
+      background: var(--accent-gold);
+      color: var(--bg-dark);
+      border: none;
+      padding: 0.8rem 2rem;
+      border-radius: 25px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+
+    /* Modal / Lightbox */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+      padding: 1rem;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-content-wrapper {
+      max-width: 90vw;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .modal-content-wrapper img, 
+    .modal-content-wrapper video {
+      max-width: 100%;
+      max-height: 80vh;
+      border-radius: 8px;
+      box-shadow: 0 0 20px rgba(212, 163, 115, 0.4);
+    }
+
+    .close-modal {
+      position: absolute;
+      top: 20px;
+      right: 25px;
+      color: #fff;
+      font-size: 2.5rem;
+      cursor: pointer;
+    }
+
+    @media (max-width: 600px) {
+      header h1 { font-size: 2rem; }
+      header h2 { font-size: 1.2rem; }
+      nav { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Encabezado -->
+  <header>
+    <h1>Una Noche para Recordar</h1>
+    <h2>Karen Mis 50</h2>
+  </header>
+
+  <!-- Navegación por pestañas -->
+  <nav>
+    <button class="tab-btn active" onclick="switchTab('recuerdos', event)">
+      <i class="fa-solid fa-camera"></i> Algunos Recuerdos
+    </button>
+    <button class="tab-btn" onclick="switchTab('familia', event)">
+      <i class="fa-solid fa-heart"></i> Tu familia quiere decirte algo
+    </button>
+    <button class="tab-btn" onclick="switchTab('proceso', event)">
+      <i class="fa-solid fa-film"></i> Un Poco del Proceso
+    </button>
+  </nav>
+
+  <!-- Contenido Principal -->
+  <main>
+    
+    <!-- PESTAÑA 1: Algunos Recuerdos -->
+    <section id="recuerdos" class="tab-content active">
+      
+      <!-- QR para escanear -->
+      <div class="qr-container">
+        <h3 class="section-title"><i class="fa-solid fa-qrcode"></i> Escanea para Abrir la Cámara</h3>
+        <p style="color: var(--text-muted); max-width: 500px;">
+          Escanea con tu celular este código QR para abrir directamente la cámara y tomar fotos o videos.
+        </p>
+        <div class="qr-box" id="qr-canvas-container"></div>
+        <small style="color: var(--accent-gold);">¡Fotos y videos directo a la galería!</small>
+      </div>
+
+      <!-- Acciones de carga -->
+      <div class="section-card">
+        <h3 class="section-title"><i class="fa-solid fa-cloud-arrow-up"></i> Fotos y Videos de la Fiesta</h3>
+        
+        <div class="actions-grid">
+          <!-- Botón abrir cámara externa camara.html -->
+          <a href="camara.html" class="btn-camara-link">
+            <i class="fa-solid fa-camera-retro"></i>
+            <span>Abrir Cámara Externa</span>
+          </a>
+
+          <!-- Subir de la galería local -->
+          <label class="action-btn">
+            <i class="fa-solid fa-images"></i>
+            <span>Subir de Galería</span>
+            <input type="file" accept="image/*,video/*" multiple style="display: none;" onchange="handleFileInput(this.files, 'recuerdos')">
+          </label>
+
+          <!-- Abrir cámara web rápida integrada -->
+          <div class="action-btn" onclick="openCamera()">
+            <i class="fa-solid fa-video"></i>
+            <span>Usar Cámara Rápida</span>
+          </div>
+        </div>
+
+        <!-- Visor de Cámara Integrado -->
+        <div id="camera-preview-container">
+          <video id="video-feed" autoplay playsinline muted></video>
+          <button class="capture-btn" onclick="takePhoto('recuerdos')">
+            <i class="fa-solid fa-circle"></i> Capturar y Guardar
+          </button>
+        </div>
+
+        <!-- Galería de Recuerdos -->
+        <h4 style="margin-top: 2rem; color: var(--accent-gold);">Recuerdos Subidos</h4>
+        <div class="media-grid" id="grid-recuerdos"></div>
+      </div>
+    </section>
+
+    <!-- PESTAÑA 2: Tu Familia Quiere Decirte Algo -->
+    <section id="familia" class="tab-content">
+      <div class="section-card">
+        <h3 class="section-title"><i class="fa-solid fa-heart"></i> Algunos saludos especiales esperan por ti</h3>
+        <p style="color: var(--text-muted); margin-bottom: 1.5rem;">
+          Sube tus videos y felicitaciones para Karen en este día tan especial (soporta videos largos).
+        </p>
+
+        <label class="action-btn" style="max-width: 320px; margin: 0 auto 2rem auto; display: block;">
+          <i class="fa-solid fa-video"></i>
+          <span>Subir Saludo en Video o Foto</span>
+          <input type="file" accept="image/*,video/*" multiple style="display: none;" onchange="handleFileInput(this.files, 'familia')">
+        </label>
+
+        <div class="media-grid" id="grid-familia"></div>
+      </div>
+    </section>
+
+    <!-- PESTAÑA 3: Un Poco del Proceso -->
+    <section id="proceso" class="tab-content">
+      <div class="section-card">
+        <h3 class="section-title"><i class="fa-solid fa-compass-drafting"></i> Detrás de Escena</h3>
+        <p style="color: var(--text-muted); margin-bottom: 1.5rem;">
+          Revive cómo planeamos esta noche inolvidable: desde los preparativos hasta la decoración.
+        </p>
+
+        <label class="action-btn" style="max-width: 320px; margin: 0 auto 2rem auto; display: block;">
+          <i class="fa-solid fa-folder-plus"></i>
+          <span>Subir Preparativos</span>
+          <input type="file" accept="image/*,video/*" multiple style="display: none;" onchange="handleFileInput(this.files, 'proceso')">
+        </label>
+
+        <div class="media-grid" id="grid-proceso"></div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Modal Lightbox -->
+  <div id="lightbox" class="modal" onclick="closeLightbox(event)">
+    <span class="close-modal">&times;</span>
+    <div class="modal-content-wrapper" id="lightbox-body"></div>
+  </div>
+
+  <!-- Librería del Código QR -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <!-- LÓGICA PRINCIPAL Y BASE DE DATOS INTEGRADA -->
+  <script>
+    // --- 1. BASE DE DATOS LOCAL INTEGRADA (IndexedDB) ---
+    let db = null;
+    const DB_NAME = "Karen50MediaDB";
+    const STORE_NAME = "elementos";
+
+    function initDB() {
+      return new Promise((resolve, reject) => {
+        if (db) return resolve(db);
+        const request = indexedDB.open(DB_NAME, 1);
+
+        request.onupgradeneeded = (e) => {
+          const database = e.target.result;
+          if (!database.objectStoreNames.contains(STORE_NAME)) {
+            database.createObjectStore(STORE_NAME, { keyPath: "id", autoIncrement: true });
+          }
+        };
+
+        request.onsuccess = (e) => {
+          db = e.target.result;
+          resolve(db);
+        };
+
+        request.onerror = (e) => {
+          console.error("Error al abrir IndexedDB:", e);
+          reject(e);
+        };
+      });
+    }
+
+    async function saveMediaToDB(section, type, fileBlob) {
+      try {
+        const database = await initDB();
+        const tx = database.transaction([STORE_NAME], "readwrite");
+        const store = tx.objectStore(STORE_NAME);
+
+        const record = {
+          seccion: section || 'recuerdos',
+          tipo: type, // 'image' o 'video'
+          blob: fileBlob,
+          fecha: new Date().getTime()
+        };
+
+        store.add(record);
+        tx.oncomplete = () => {
+          loadStoredMedia();
+        };
+      } catch (err) {
+        console.error("Error guardando en la base de datos:", err);
+        alert("Ocurrió un error al guardar el archivo.");
+      }
+    }
+
+    async function loadStoredMedia() {
+      try {
+        const database = await initDB();
+        const tx = database.transaction([STORE_NAME], "readonly");
+        const store = tx.objectStore(STORE_NAME);
+        const request = store.getAll();
+
+        request.onsuccess = () => {
+          // Limpiar todas las galerías antes de volver a pintar
+          ['recuerdos', 'familia', 'proceso'].forEach(sec => {
+            const grid = document.getElementById(`grid-${sec}`);
+            if (grid) grid.innerHTML = '';
+          });
+
+          const items = request.result || [];
+          // Los más recientes primero
+          items.reverse().forEach(item => {
+            const sec = item.seccion || 'recuerdos';
+            const grid = document.getElementById(`grid-${sec}`);
+            if (grid) {
+              renderMediaItem(grid, item);
+            }
+          });
+        };
+      } catch (err) {
+        console.error("Error al cargar medios:", err);
+      }
+    }
+
+    async function deleteItem(id) {
+      if (confirm('¿Seguro que deseas eliminar este recuerdo?')) {
+        try {
+          const database = await initDB();
+          const tx = database.transaction([STORE_NAME], "readwrite");
+          const store = tx.objectStore(STORE_NAME);
+          store.delete(id);
+          tx.oncomplete = () => loadStoredMedia();
+        } catch (err) {
+          console.error("Error al eliminar:", err);
+        }
+      }
+    }
+
+    // --- 2. RENDERIZADO EN PANTALLA ---
+    function renderMediaItem(container, item) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'media-item';
+
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'delete-btn';
+      deleteBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
+      deleteBtn.onclick = (e) => {
+        e.stopPropagation();
+        deleteItem(item.id);
+      };
+
+      const mediaUrl = URL.createObjectURL(item.blob);
+      let element;
+
+      if (item.tipo === 'foto' || item.tipo === 'image') {
+        element = document.createElement('img');
+        element.src = mediaUrl;
+        element.onclick = () => openLightbox('image', mediaUrl);
+      } else {
+        element = document.createElement('video');
+        element.src = mediaUrl;
+        element.controls = true;
+        element.onclick = (e) => {
+          if (e.target === element) openLightbox('video', mediaUrl);
+        };
+      }
+
+      wrapper.appendChild(deleteBtn);
+      wrapper.appendChild(element);
+      container.prepend(wrapper);
+    }
+
+    // Manejador de selección de archivos desde la galería
+    function handleFileInput(files, section) {
+      if (!files || files.length === 0) return;
+      Array.from(files).forEach(file => {
+        const type = file.type.startsWith('image/') ? 'image' : 'video';
+        saveMediaToDB(section, type, file);
+      });
+    }
+
+    // --- 3. CÁMARA WEB EN VIVO ---
+    let videoStream = null;
+
+    async function openCamera() {
+      const container = document.getElementById('camera-preview-container');
+      const video = document.getElementById('video-feed');
+
+      try {
+        videoStream = await navigator.mediaDevices.getUserMedia({ 
+          video: { facingMode: "environment" }, 
+          audio: false 
+        });
+        video.srcObject = videoStream;
+        container.style.display = 'flex';
+        container.scrollIntoView({ behavior: 'smooth' });
+      } catch (err) {
+        console.error("Error al acceder a la cámara:", err);
+        alert("No se pudo abrir la cámara. Si estás en celular, asegúrate de dar los permisos de cámara en tu navegador.");
+      }
+    }
+
+    function closeCamera() {
+      if (videoStream) {
+        videoStream.getTracks().forEach(track => track.stop());
+        videoStream = null;
+      }
+      const container = document.getElementById('camera-preview-container');
+      if (container) container.style.display = 'none';
+    }
+
+    function takePhoto(section) {
+      const video = document.getElementById('video-feed');
+      if (!video.videoWidth) {
+        alert("La cámara aún se está iniciando, espera un segundo.");
+        return;
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      canvas.toBlob((blob) => {
+        if (blob) {
+          saveMediaToDB(section, 'image', blob);
+          closeCamera();
+        } else {
+          alert("Error al tomar la fotografía.");
+        }
+      }, 'image/jpeg', 0.95);
+    }
+
+    // --- 4. CONTROL DE PESTAÑAS Y MODAL ---
+    function switchTab(tabId, event) {
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+
+      document.getElementById(tabId).classList.add('active');
+      if (event) event.currentTarget.classList.add('active');
+
+      closeCamera();
+    }
+
+    function openLightbox(type, src) {
+      const lightbox = document.getElementById('lightbox');
+      const body = document.getElementById('lightbox-body');
+      body.innerHTML = '';
+
+      if (type === 'image') {
+        const img = document.createElement('img');
+        img.src = src;
+        body.appendChild(img);
+      } else {
+        const video = document.createElement('video');
+        video.src = src;
+        video.controls = true;
+        video.autoplay = true;
+        body.appendChild(video);
+      }
+
+      lightbox.classList.add('active');
+    }
+
+    function closeLightbox(event) {
+      if (event.target.id === 'lightbox' || event.target.className === 'close-modal') {
+        const lightbox = document.getElementById('lightbox');
+        lightbox.classList.remove('active');
+        document.getElementById('lightbox-body').innerHTML = '';
+      }
+    }
+
+    // --- 5. EVENTOS AL CARGAR LA PÁGINA ---
+    window.addEventListener('DOMContentLoaded', () => {
+      // Cargar archivos guardados
+      loadStoredMedia();
+
+      // Generar código QR apuntando a camara.html
+      const currentUrl = window.location.href.split('?')[0].replace('index.html', '');
+      const cameraUrl = currentUrl + 'camara.html';
+      
+      const qrContainer = document.getElementById('qr-canvas-container');
+      if (qrContainer && typeof QRCode !== 'undefined') {
+        qrContainer.innerHTML = '';
+        new QRCode(qrContainer, {
+          text: cameraUrl,
+          width: 160,
+          height: 160,
+          colorDark : "#1f140e",
+          colorLight : "#ffffff"
+        });
+      }
+
+      // Si viene con el parámetro de cámara activado
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('openCamera') === 'true') {
+        openCamera();
+      }
+    });
+
+    // Recargar galería al volver a la pestaña
+    window.addEventListener('pageshow', loadStoredMedia);
+  </script>
+</body>
+</html>

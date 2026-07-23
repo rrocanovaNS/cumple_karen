@@ -1,0 +1,101 @@
+<video id="webcam" autoplay playsinline muted></video>
+<canvas id="photoCanvas" style="display:none;"></canvas>
+
+<button id="btnFlip">Voltear Cámara</button>
+<button id="btnPhoto">Tomar Foto</button>
+<button id="btnVideo">Grabar Video</button>
+
+<script>
+let currentStream = null;
+let facingMode = 'environment'; // 'environment' (trasera) o 'user' (frontal)
+let mediaRecorder = null;
+let recordedChunks = [];
+
+const video = document.getElementById('webcam');
+const canvas = document.getElementById('photoCanvas');
+
+// 1. Iniciar transmisión de la cámara
+async function startCamera() {
+  // Detener pistas del stream anterior antes de pedir uno nuevo
+  if (currentStream) {
+    currentStream.getTracks().forEach(track => track.stop());
+  }
+
+  const constraints = {
+    video: {
+      facingMode: { exact: facingMode }
+    },
+    audio: true
+  };
+
+  try {
+    currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+    video.srcObject = currentStream;
+  } catch (err) {
+    // Si falla 'exact', intentar sin restricción rígida
+    try {
+      currentStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: facingMode },
+        audio: true
+      });
+      video.srcObject = currentStream;
+    } catch (fallbackErr) {
+      console.error("Error al acceder a la cámara:", fallbackErr);
+    }
+  }
+}
+
+// 2. Alternar / Voltear cámara
+document.getElementById('btnFlip').addEventListener('click', () => {
+  facingMode = (facingMode === 'environment') ? 'user' : 'environment';
+  startCamera();
+});
+
+// 3. Capturar Foto
+document.getElementById('btnPhoto').addEventListener('click', () => {
+  if (!currentStream) return;
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+  // Convertir foto a Blob para subir o visualizar
+  canvas.toBlob((blob) => {
+    console.log("Foto capturada exitosamente", blob);
+    // Aquí enviarás el 'blob' a tu servidor en la nube
+  }, 'image/jpeg', 0.95);
+});
+
+// 4. Grabar y Detener Video
+document.getElementById('btnVideo').addEventListener('click', () => {
+  if (!mediaRecorder || mediaRecorder.state === 'inactive') {
+    recordedChunks = [];
+    
+    // Detectar formato compatible con el dispositivo móvil
+    const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9') 
+      ? 'video/webm;codecs=vp9'
+      : (MediaRecorder.isTypeSupported('video/mp4') ? 'video/mp4' : 'video/webm');
+
+    mediaRecorder = new MediaRecorder(currentStream, { mimeType });
+
+    mediaRecorder.ondataavailable = (event) => {
+      if (event.data.size > 0) recordedChunks.push(event.data);
+    };
+
+    mediaRecorder.onstop = () => {
+      const videoBlob = new Blob(recordedChunks, { type: mimeType });
+      console.log("Video grabado exitosamente", videoBlob);
+      // Aquí enviarás el 'videoBlob' a tu servidor en la nube
+    };
+
+    mediaRecorder.start();
+    console.log("Grabación iniciada");
+  } else {
+    mediaRecorder.stop();
+    console.log("Grabación deteniéndose...");
+  }
+});
+
+// Inicializar cámara al cargar la página
+startCamera();
+</script>
