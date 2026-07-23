@@ -1,101 +1,622 @@
-<video id="webcam" autoplay playsinline muted></video>
-<canvas id="photoCanvas" style="display:none;"></canvas>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cabina de Recuerdos - Karen Mis 50</title>
 
-<button id="btnFlip">Voltear Cámara</button>
-<button id="btnPhoto">Tomar Foto</button>
-<button id="btnVideo">Grabar Video</button>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600&family=Playfair+Display:ital,wght@0,600;0,800;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-<script>
-let currentStream = null;
-let facingMode = 'environment'; // 'environment' (trasera) o 'user' (frontal)
-let mediaRecorder = null;
-let recordedChunks = [];
-
-const video = document.getElementById('webcam');
-const canvas = document.getElementById('photoCanvas');
-
-// 1. Iniciar transmisión de la cámara
-async function startCamera() {
-  // Detener pistas del stream anterior antes de pedir uno nuevo
-  if (currentStream) {
-    currentStream.getTracks().forEach(track => track.stop());
-  }
-
-  const constraints = {
-    video: {
-      facingMode: { exact: facingMode }
-    },
-    audio: true
-  };
-
-  try {
-    currentStream = await navigator.mediaDevices.getUserMedia(constraints);
-    video.srcObject = currentStream;
-  } catch (err) {
-    // Si falla 'exact', intentar sin restricción rígida
-    try {
-      currentStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: facingMode },
-        audio: true
-      });
-      video.srcObject = currentStream;
-    } catch (fallbackErr) {
-      console.error("Error al acceder a la cámara:", fallbackErr);
+  <style>
+    :root {
+      --bg-dark: #1f140e;
+      --bg-card: #2e1e16;
+      --accent-gold: #d4a373;
+      --text-light: #fefae0;
+      --text-muted: #b08968;
+      --brown-medium: #7f5539;
+      --danger: #e63946;
+      --success: #7fb069;
+      --leopard-pattern: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 60 60"><path fill="%237f5539" opacity="0.25" d="M15,10 C10,12 8,18 12,22 C16,26 22,24 20,18 C18,12 20,8 15,10 Z M40,35 C35,37 32,45 38,48 C44,51 48,42 45,38 C42,34 45,33 40,35 Z M45,10 C40,8 38,15 42,18 C46,21 50,14 45,10 Z"/><path fill="%232e1e16" opacity="0.4" d="M13,12 C11,13 10,16 12,18 C16,20 17,19 16,16 Z M41,37 C38,38 37,42 40,44 C43,46 45,41 43,39 Z"/></svg>');
     }
-  }
-}
 
-// 2. Alternar / Voltear cámara
-document.getElementById('btnFlip').addEventListener('click', () => {
-  facingMode = (facingMode === 'environment') ? 'user' : 'environment';
-  startCamera();
-});
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
-// 3. Capturar Foto
-document.getElementById('btnPhoto').addEventListener('click', () => {
-  if (!currentStream) return;
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    body {
+      font-family: 'Montserrat', sans-serif;
+      background:
+        radial-gradient(circle at top, rgba(212, 163, 115, 0.12), transparent 35%),
+        linear-gradient(180deg, rgba(31, 20, 14, 0.92), rgba(31, 20, 14, 1)),
+        var(--leopard-pattern);
+      color: var(--text-light);
+      min-height: 100vh;
+    }
 
-  // Convertir foto a Blob para subir o visualizar
-  canvas.toBlob((blob) => {
-    console.log("Foto capturada exitosamente", blob);
-    // Aquí enviarás el 'blob' a tu servidor en la nube
-  }, 'image/jpeg', 0.95);
-});
+    header {
+      text-align: center;
+      padding: 3rem 1rem 2rem;
+      border-bottom: 2px solid var(--accent-gold);
+      background: linear-gradient(180deg, rgba(31, 20, 14, 0.88), rgba(31, 20, 14, 0.96));
+    }
 
-// 4. Grabar y Detener Video
-document.getElementById('btnVideo').addEventListener('click', () => {
-  if (!mediaRecorder || mediaRecorder.state === 'inactive') {
-    recordedChunks = [];
-    
-    // Detectar formato compatible con el dispositivo móvil
-    const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9') 
-      ? 'video/webm;codecs=vp9'
-      : (MediaRecorder.isTypeSupported('video/mp4') ? 'video/mp4' : 'video/webm');
+    header h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(2.2rem, 6vw, 3.6rem);
+      font-weight: 800;
+      letter-spacing: 1px;
+      margin-bottom: 0.6rem;
+    }
 
-    mediaRecorder = new MediaRecorder(currentStream, { mimeType });
+    header p {
+      max-width: 720px;
+      margin: 0 auto;
+      color: var(--accent-gold);
+      font-size: 1rem;
+      line-height: 1.6;
+    }
 
-    mediaRecorder.ondataavailable = (event) => {
-      if (event.data.size > 0) recordedChunks.push(event.data);
-    };
+    main {
+      width: min(1100px, 92vw);
+      margin: 2rem auto 3rem;
+      display: grid;
+      grid-template-columns: 1.4fr 0.8fr;
+      gap: 1.5rem;
+    }
 
-    mediaRecorder.onstop = () => {
-      const videoBlob = new Blob(recordedChunks, { type: mimeType });
-      console.log("Video grabado exitosamente", videoBlob);
-      // Aquí enviarás el 'videoBlob' a tu servidor en la nube
-    };
+    .panel {
+      background-color: rgba(46, 30, 22, 0.92);
+      border: 1px solid rgba(212, 163, 115, 0.24);
+      border-radius: 18px;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+      overflow: hidden;
+    }
 
-    mediaRecorder.start();
-    console.log("Grabación iniciada");
-  } else {
-    mediaRecorder.stop();
-    console.log("Grabación deteniéndose...");
-  }
-});
+    .stage {
+      padding: 1.2rem;
+    }
 
-// Inicializar cámara al cargar la página
-startCamera();
-</script>
+    .camera-frame {
+      position: relative;
+      border-radius: 18px;
+      overflow: hidden;
+      background:
+        linear-gradient(135deg, rgba(127, 85, 57, 0.2), rgba(31, 20, 14, 0.88)),
+        var(--bg-dark);
+      border: 1px solid rgba(212, 163, 115, 0.24);
+      min-height: 420px;
+    }
+
+    video {
+      display: block;
+      width: 100%;
+      min-height: 420px;
+      max-height: 72vh;
+      object-fit: cover;
+      background: #120c08;
+    }
+
+    .camera-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      padding: 1rem;
+      background: linear-gradient(180deg, rgba(16, 10, 7, 0.45), transparent 24%, transparent 76%, rgba(16, 10, 7, 0.5));
+    }
+
+    .camera-badge,
+    .recording-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      border-radius: 999px;
+      padding: 0.55rem 0.9rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      backdrop-filter: blur(10px);
+    }
+
+    .camera-badge {
+      background: rgba(31, 20, 14, 0.68);
+      border: 1px solid rgba(212, 163, 115, 0.24);
+      color: var(--text-light);
+    }
+
+    .recording-pill {
+      background: rgba(230, 57, 70, 0.16);
+      border: 1px solid rgba(230, 57, 70, 0.35);
+      color: #ffd9dd;
+      opacity: 0;
+      transform: translateY(-8px);
+      transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+
+    .recording-pill.active {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin-top: 1.2rem;
+    }
+
+    button {
+      border: 0;
+      border-radius: 14px;
+      padding: 1rem;
+      cursor: pointer;
+      font: inherit;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+      color: var(--text-light);
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+      transform: none;
+    }
+
+    .btn-secondary {
+      background: rgba(127, 85, 57, 0.24);
+      border: 1px solid rgba(212, 163, 115, 0.3);
+    }
+
+    .btn-photo {
+      background: linear-gradient(135deg, var(--accent-gold), #b98257);
+      color: #24150d;
+      font-weight: 700;
+    }
+
+    .btn-video {
+      background: linear-gradient(135deg, #8f2330, var(--danger));
+      font-weight: 700;
+    }
+
+    .sidebar {
+      padding: 1.4rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .info-card {
+      background: rgba(31, 20, 14, 0.55);
+      border: 1px solid rgba(212, 163, 115, 0.15);
+      border-radius: 16px;
+      padding: 1.2rem;
+    }
+
+    .info-card h2 {
+      font-family: 'Playfair Display', serif;
+      color: var(--accent-gold);
+      font-size: 1.4rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .info-card p,
+    .info-card li {
+      color: var(--text-light);
+      line-height: 1.6;
+      font-size: 0.95rem;
+    }
+
+    .info-card ul {
+      list-style: none;
+      display: grid;
+      gap: 0.7rem;
+    }
+
+    .info-card li {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.7rem;
+    }
+
+    .info-card li i {
+      color: var(--accent-gold);
+      margin-top: 0.2rem;
+    }
+
+    .status-card {
+      display: grid;
+      gap: 0.75rem;
+    }
+
+    .status-label {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-muted);
+    }
+
+    .status-value {
+      font-weight: 600;
+      color: var(--text-light);
+    }
+
+    .preview {
+      display: none;
+      margin-top: 1rem;
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid rgba(212, 163, 115, 0.2);
+      background: rgba(31, 20, 14, 0.7);
+    }
+
+    .preview.active {
+      display: block;
+    }
+
+    .preview img,
+    .preview video {
+      width: 100%;
+      height: auto;
+      display: block;
+      object-fit: contain;
+      max-height: 70vh;
+      background: #120c08;
+    }
+
+    .preview-caption {
+      padding: 0.9rem 1rem;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    .preview-caption a {
+      color: var(--accent-gold);
+      text-decoration: underline;
+    }
+
+    .preview-caption a:hover {
+      color: var(--text-light);
+    }
+
+    .preview-actions {
+      padding: 0 1rem 1rem;
+    }
+
+    .preview-actions button {
+      width: 100%;
+      background: linear-gradient(135deg, var(--success), #5f8f52);
+      font-weight: 700;
+      color: #10210f;
+    }
+
+    canvas {
+      display: none;
+    }
+
+    @media (max-width: 900px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+
+      .controls {
+        grid-template-columns: 1fr;
+      }
+
+      .camera-frame,
+      video {
+        min-height: 320px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Cabina de Recuerdos</h1>
+    <p>Captura una foto o graba un video para sumar tu mensaje a la noche de Karen. Todo queda listo para subirse y verse desde el sitio.</p>
+  </header>
+
+  <main>
+    <section class="panel stage">
+      <div class="camera-frame">
+        <video id="webcam" autoplay playsinline muted></video>
+        <div class="camera-overlay">
+          <div class="camera-badge">
+            <i class="fa-solid fa-camera-retro"></i>
+            <span id="cameraModeLabel">Camara trasera</span>
+          </div>
+          <div id="recordingIndicator" class="recording-pill">
+            <i class="fa-solid fa-circle"></i>
+            <span>Grabando</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button id="btnFlip" class="btn-secondary" type="button">
+          <i class="fa-solid fa-rotate"></i> Voltear camara
+        </button>
+        <button id="btnPhoto" class="btn-photo" type="button">
+          <i class="fa-solid fa-camera"></i> Tomar foto
+        </button>
+        <button id="btnVideo" class="btn-video" type="button">
+          <i class="fa-solid fa-video"></i> Grabar video
+        </button>
+      </div>
+
+      <div id="previewCard" class="preview">
+        <img id="photoPreview" alt="Vista previa de la foto">
+        <video id="videoPreview" controls playsinline></video>
+        <div id="previewCaption" class="preview-caption"></div>
+        <div class="preview-actions">
+          <button id="btnUpload" type="button" disabled>
+            <i class="fa-solid fa-cloud-arrow-up"></i> SUBIR
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <aside class="panel sidebar">
+      <section class="info-card">
+        <h2>Como usarla</h2>
+        <ul>
+          <li><i class="fa-solid fa-star"></i><span>Elegi la camara frontal o trasera segun el tipo de recuerdo que quieras grabar.</span></li>
+          <li><i class="fa-solid fa-image"></i><span>Las fotos se capturan al instante y quedan listas para subirse al servidor.</span></li>
+          <li><i class="fa-solid fa-film"></i><span>Los videos se empiezan y detienen con el mismo boton para no complicar la experiencia.</span></li>
+        </ul>
+      </section>
+
+      <section class="info-card status-card">
+        <div>
+          <div class="status-label">Estado de la camara</div>
+          <div id="cameraStatus" class="status-value">Inicializando...</div>
+        </div>
+        <div>
+          <div class="status-label">Ultima accion</div>
+          <div id="lastAction" class="status-value">Todavia no hay capturas.</div>
+        </div>
+      </section>
+    </aside>
+  </main>
+
+  <canvas id="photoCanvas"></canvas>
+
+  <script>
+    let currentStream = null;
+    let facingMode = 'environment';
+    let mediaRecorder = null;
+    let recordedChunks = [];
+
+    const video = document.getElementById('webcam');
+    const canvas = document.getElementById('photoCanvas');
+    const btnFlip = document.getElementById('btnFlip');
+    const btnPhoto = document.getElementById('btnPhoto');
+    const btnVideo = document.getElementById('btnVideo');
+    const recordingIndicator = document.getElementById('recordingIndicator');
+    const cameraModeLabel = document.getElementById('cameraModeLabel');
+    const cameraStatus = document.getElementById('cameraStatus');
+    const lastAction = document.getElementById('lastAction');
+    const previewCard = document.getElementById('previewCard');
+    const photoPreview = document.getElementById('photoPreview');
+    const videoPreview = document.getElementById('videoPreview');
+    const previewCaption = document.getElementById('previewCaption');
+    const btnUpload = document.getElementById('btnUpload');
+    let lastCapturedBlob = null;
+    let lastCapturedExtension = '';
+
+    function setCameraModeLabel() {
+      cameraModeLabel.textContent = facingMode === 'environment' ? 'Camara trasera' : 'Camara frontal';
+    }
+
+    function setCameraStatus(message) {
+      cameraStatus.textContent = message;
+    }
+
+    function setLastAction(message) {
+      lastAction.textContent = message;
+    }
+
+    function scrollToPreview() {
+      const performScroll = () => {
+        const buttonRect = btnUpload.getBoundingClientRect();
+        const absoluteTop = window.scrollY + buttonRect.top;
+        const viewportHeight = window.innerHeight;
+        const targetTop = Math.max(absoluteTop - viewportHeight + buttonRect.height + 32, 0);
+
+        window.scrollTo({
+          top: targetTop,
+          behavior: 'smooth'
+        });
+      };
+
+      requestAnimationFrame(() => {
+        performScroll();
+        window.setTimeout(performScroll, 250);
+      });
+    }
+
+    function showPhotoPreview(blob) {
+      lastCapturedBlob = blob;
+      lastCapturedExtension = 'jpg';
+      const objectUrl = URL.createObjectURL(blob);
+      photoPreview.src = objectUrl;
+      photoPreview.style.display = 'block';
+      videoPreview.pause();
+      videoPreview.removeAttribute('src');
+      videoPreview.load();
+      videoPreview.style.display = 'none';
+      previewCaption.textContent = 'Vista previa de la ultima foto capturada.';
+      previewCard.classList.add('active');
+      btnUpload.disabled = false;
+      scrollToPreview();
+    }
+
+    function showVideoPreview(blob) {
+      lastCapturedBlob = blob;
+      lastCapturedExtension = blob.type.includes('mp4') ? 'mp4' : 'webm';
+      const objectUrl = URL.createObjectURL(blob);
+      videoPreview.src = objectUrl;
+      videoPreview.style.display = 'block';
+      photoPreview.removeAttribute('src');
+      photoPreview.style.display = 'none';
+      previewCaption.textContent = 'Vista previa del ultimo video grabado.';
+      previewCard.classList.add('active');
+      btnUpload.disabled = false;
+      scrollToPreview();
+    }
+
+    async function startCamera() {
+      setCameraModeLabel();
+      setCameraStatus('Solicitando permisos...');
+
+      if (currentStream) {
+        currentStream.getTracks().forEach((track) => track.stop());
+      }
+
+      const constraints = {
+        video: {
+          facingMode: { exact: facingMode }
+        },
+        audio: true
+      };
+
+      try {
+        currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+        video.srcObject = currentStream;
+        setCameraStatus('Camara lista para capturar.');
+      } catch (err) {
+        try {
+          currentStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode },
+            audio: true
+          });
+          video.srcObject = currentStream;
+          setCameraStatus('Camara lista con modo compatible.');
+        } catch (fallbackErr) {
+          console.error('Error al acceder a la camara:', fallbackErr);
+          setCameraStatus('No se pudo acceder a la camara.');
+          setLastAction('Revisa permisos del navegador para camara y microfono.');
+        }
+      }
+    }
+
+    btnFlip.addEventListener('click', () => {
+      facingMode = facingMode === 'environment' ? 'user' : 'environment';
+      setLastAction('Cambio de camara solicitado.');
+      startCamera();
+    });
+
+    btnPhoto.addEventListener('click', () => {
+      if (!currentStream) {
+        return;
+      }
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          setLastAction('No se pudo generar la foto.');
+          return;
+        }
+
+        showPhotoPreview(blob);
+        setLastAction(`Foto capturada (${Math.round(blob.size / 1024)} KB).`);
+        console.log('Foto capturada exitosamente', blob);
+      }, 'image/jpeg', 0.95);
+    });
+
+    btnVideo.addEventListener('click', () => {
+      if (!currentStream) {
+        return;
+      }
+
+      if (!mediaRecorder || mediaRecorder.state === 'inactive') {
+        recordedChunks = [];
+
+        const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+          ? 'video/webm;codecs=vp9'
+          : (MediaRecorder.isTypeSupported('video/mp4') ? 'video/mp4' : 'video/webm');
+
+        mediaRecorder = new MediaRecorder(currentStream, { mimeType });
+
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            recordedChunks.push(event.data);
+          }
+        };
+
+        mediaRecorder.onstop = () => {
+          const videoBlob = new Blob(recordedChunks, { type: mimeType });
+          showVideoPreview(videoBlob);
+          recordingIndicator.classList.remove('active');
+          btnVideo.innerHTML = '<i class="fa-solid fa-video"></i> Grabar video';
+          setLastAction(`Video grabado (${Math.round(videoBlob.size / 1024)} KB).`);
+          console.log('Video grabado exitosamente', videoBlob);
+        };
+
+        mediaRecorder.start();
+        recordingIndicator.classList.add('active');
+        btnVideo.innerHTML = '<i class="fa-solid fa-stop"></i> Detener video';
+        setLastAction('Grabacion iniciada.');
+      } else {
+        mediaRecorder.stop();
+        setLastAction('Finalizando grabacion...');
+      }
+    });
+
+    btnUpload.addEventListener('click', async () => {
+      if (!lastCapturedBlob) {
+        return;
+      }
+
+      btnUpload.disabled = true;
+      btnUpload.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Subiendo...';
+      setLastAction('Subiendo archivo al servidor...');
+
+      const formData = new FormData();
+      const fileName = `captura.${lastCapturedExtension}`;
+      formData.append('file', lastCapturedBlob, fileName);
+
+      try {
+        const response = await fetch('/api/upload.php', {
+          method: 'POST',
+          body: formData
+        });
+
+        const payload = await response.json();
+
+        if (!response.ok || !payload.ok) {
+          throw new Error(payload.error || 'No se pudo subir el archivo.');
+        }
+
+        setLastAction(`Archivo subido: ${payload.file.stored_name}`);
+        previewCaption.innerHTML = `Subido correctamente: <a href="${payload.file.url}" target="_blank" rel="noopener noreferrer">${payload.file.url}</a>`;
+      } catch (error) {
+        console.error(error);
+        setLastAction(error.message || 'La subida fallo.');
+      } finally {
+        btnUpload.disabled = false;
+        btnUpload.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> SUBIR';
+      }
+    });
+
+    setCameraModeLabel();
+    startCamera();
+  </script>
+</body>
+</html>
