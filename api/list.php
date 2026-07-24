@@ -11,7 +11,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     ]);
 }
 
-$storageDirectory = mediaDirectory();
+$category = requestedCategory();
+$storageDirectory = mediaDirectory($category);
 ensureMediaDirectoryExists($storageDirectory);
 
 $entries = scandir($storageDirectory);
@@ -46,9 +47,10 @@ foreach ($entries as $entry) {
         'name' => $entry,
         'mime_type' => $mimeType,
         'type' => classifyMimeType($mimeType),
+        'category' => $category,
         'size' => filesize($fullPath),
         'modified' => date(DATE_ATOM, (int) filemtime($fullPath)),
-        'url' => publicFileUrl($entry),
+        'url' => publicFileUrl($entry, $category),
     ];
 }
 
@@ -62,4 +64,3 @@ jsonResponse(200, [
     'count' => count($files),
     'files' => $files,
 ]);
-

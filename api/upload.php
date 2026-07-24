@@ -51,11 +51,20 @@ if ($temporaryPath === '' || !is_uploaded_file($temporaryPath)) {
 }
 
 $mimeType = detectMimeType($temporaryPath);
+$category = requestedCategory();
 
 if (!isset(ALLOWED_MIME_TYPES[$mimeType])) {
     jsonResponse(415, [
         'ok' => false,
         'error' => 'Tipo de archivo no permitido.',
+        'mime_type' => $mimeType,
+    ]);
+}
+
+if ($category === 'familia' && classifyMimeType($mimeType) !== 'video') {
+    jsonResponse(415, [
+        'ok' => false,
+        'error' => 'En la categoria familia solo se permiten videos.',
         'mime_type' => $mimeType,
     ]);
 }
@@ -70,7 +79,7 @@ if ($fileSize > $maxAllowedBytes) {
     ]);
 }
 
-$storageDirectory = mediaDirectory();
+$storageDirectory = mediaDirectory($category);
 ensureMediaDirectoryExists($storageDirectory);
 
 $extension = ALLOWED_MIME_TYPES[$mimeType];
@@ -91,8 +100,8 @@ jsonResponse(201, [
         'stored_name' => $storedFilename,
         'mime_type' => $mimeType,
         'type' => classifyMimeType($mimeType),
+        'category' => $category,
         'size' => filesize($destinationPath),
-        'url' => publicFileUrl($storedFilename),
+        'url' => publicFileUrl($storedFilename, $category),
     ],
 ]);
-

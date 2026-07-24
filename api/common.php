@@ -16,7 +16,12 @@ const ALLOWED_MIME_TYPES = [
     'video/webm' => 'webm',
 ];
 
-function mediaDirectory(): string
+const ALLOWED_CATEGORIES = [
+    'recuerdos',
+    'familia',
+];
+
+function baseMediaDirectory(): string
 {
     $configuredDirectory = getenv('MEDIA_UPLOAD_DIR');
 
@@ -31,6 +36,32 @@ function mediaDirectory(): string
     }
 
     return dirname(__DIR__) . '/media';
+}
+
+function requestedCategory(): string
+{
+    $category = $_REQUEST['category'] ?? 'recuerdos';
+
+    if (!is_string($category) || !in_array($category, ALLOWED_CATEGORIES, true)) {
+        jsonResponse(400, [
+            'ok' => false,
+            'error' => 'Categoria no valida.',
+        ]);
+    }
+
+    return $category;
+}
+
+function mediaDirectory(?string $category = null): string
+{
+    $category = $category ?? requestedCategory();
+    $baseDirectory = baseMediaDirectory();
+
+    if ($category === 'recuerdos') {
+        return $baseDirectory;
+    }
+
+    return $baseDirectory . '/' . $category;
 }
 
 function jsonResponse(int $statusCode, array $payload): void
@@ -125,7 +156,14 @@ function maxAllowedBytesForMime(string $mimeType): int
     return classifyMimeType($mimeType) === 'image' ? MAX_IMAGE_BYTES : MAX_VIDEO_BYTES;
 }
 
-function publicFileUrl(string $filename): string
+function publicFileUrl(string $filename, ?string $category = null): string
 {
-    return mediaBaseUrl() . '/' . rawurlencode($filename);
+    $category = $category ?? requestedCategory();
+    $baseUrl = mediaBaseUrl();
+
+    if ($category === 'recuerdos') {
+        return $baseUrl . '/' . rawurlencode($filename);
+    }
+
+    return $baseUrl . '/' . rawurlencode($category) . '/' . rawurlencode($filename);
 }
