@@ -236,8 +236,36 @@
       transition: transform 0.3s ease;
     }
 
+    .media-item video {
+      pointer-events: none;
+    }
+
     .media-item:hover img, .media-item:hover video {
       transform: scale(1.05);
+    }
+
+    .media-item .video-badge {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      background: linear-gradient(180deg, rgba(0, 0, 0, 0.04), rgba(0, 0, 0, 0.18));
+    }
+
+    .media-item .video-badge i {
+      width: 62px;
+      height: 62px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(31, 20, 14, 0.78);
+      border: 1px solid rgba(212, 163, 115, 0.55);
+      color: var(--accent-gold);
+      font-size: 1.45rem;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
     }
 
     .delete-btn {
@@ -316,6 +344,8 @@
       display: flex;
       flex-direction: column;
       align-items: center;
+      position: relative;
+      gap: 0.75rem;
     }
 
     .modal-content-wrapper img, 
@@ -335,10 +365,64 @@
       cursor: pointer;
     }
 
+    .lightbox-nav {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      border: 1px solid rgba(212, 163, 115, 0.45);
+      background: rgba(31, 20, 14, 0.75);
+      color: var(--text-light);
+      font-size: 1.4rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s ease, transform 0.2s ease;
+      z-index: 1001;
+    }
+
+    .lightbox-nav:hover {
+      background: rgba(212, 163, 115, 0.28);
+    }
+
+    .lightbox-nav:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+
+    .lightbox-nav.prev {
+      left: 18px;
+    }
+
+    .lightbox-nav.next {
+      right: 18px;
+    }
+
+    .lightbox-meta {
+      color: var(--accent-gold);
+      font-size: 0.95rem;
+      text-align: center;
+    }
+
     @media (max-width: 600px) {
       header h1 { font-size: 2rem; }
       header h2 { font-size: 1.2rem; }
       nav { flex-direction: column; }
+      .lightbox-nav {
+        width: 44px;
+        height: 44px;
+      }
+
+      .lightbox-nav.prev {
+        left: 10px;
+      }
+
+      .lightbox-nav.next {
+        right: 10px;
+      }
     }
   </style>
 </head>
@@ -460,6 +544,12 @@
   <!-- Modal Lightbox -->
   <div id="lightbox" class="modal" onclick="closeLightbox(event)">
     <span class="close-modal">&times;</span>
+    <button id="lightbox-prev" class="lightbox-nav prev" type="button" aria-label="Anterior">
+      <i class="fa-solid fa-chevron-left"></i>
+    </button>
+    <button id="lightbox-next" class="lightbox-nav next" type="button" aria-label="Siguiente">
+      <i class="fa-solid fa-chevron-right"></i>
+    </button>
     <div class="modal-content-wrapper" id="lightbox-body"></div>
   </div>
 
@@ -471,6 +561,13 @@
     // --- 1. BASE DE DATOS LOCAL INTEGRADA (IndexedDB) ---
     let db = null;
     let uploadedMemoriesRequestId = 0;
+    const galleryMedia = {
+      recuerdos: [],
+      familia: [],
+      proceso: []
+    };
+    let activeLightboxSection = null;
+    let activeLightboxIndex = -1;
     const DB_NAME = "Karen50MediaDB";
     const STORE_NAME = "elementos";
 
@@ -529,6 +626,9 @@
         const request = store.getAll();
 
         request.onsuccess = () => {
+          galleryMedia.familia = [];
+          galleryMedia.proceso = [];
+
           // Limpiar todas las galerías antes de volver a pintar
           ['recuerdos', 'familia', 'proceso'].forEach(sec => {
             const grid = document.getElementById(`grid-${sec}`);
@@ -541,7 +641,20 @@
             const sec = item.seccion || 'recuerdos';
             const grid = document.getElementById(`grid-${sec}`);
             if (grid) {
-              renderMediaItem(grid, item);
+              const mediaUrl = URL.createObjectURL(item.blob);
+              const normalizedType = item.tipo === 'foto' ? 'image' : item.tipo;
+              const descriptor = {
+                type: normalizedType,
+                url: mediaUrl,
+                name: `recuerdo_${item.id}`
+              };
+
+              if (!galleryMedia[sec]) {
+                galleryMedia[sec] = [];
+              }
+
+              const itemIndex = galleryMedia[sec].push(descriptor) - 1;
+              renderMediaItem(grid, item, sec, itemIndex, mediaUrl);
             }
           });
         };
@@ -578,6 +691,11 @@
 
         const files = Array.isArray(payload.files) ? payload.files.slice() : [];
         files.sort((left, right) => left.name.localeCompare(right.name));
+        galleryMedia.recuerdos = files.map((file) => ({
+          type: file.type,
+          url: file.url,
+          name: file.name
+        }));
 
         if (files.length === 0) {
           emptyState.textContent = 'No existen recuerdos aún.';
@@ -586,8 +704,8 @@
 
         emptyState.style.display = 'none';
 
-        files.forEach((file) => {
-          renderUploadedMediaItem(grid, file);
+        files.forEach((file, index) => {
+          renderUploadedMediaItem(grid, file, index);
         });
       } catch (err) {
         if (requestId !== uploadedMemoriesRequestId) {
@@ -613,9 +731,10 @@
     }
 
     // --- 2. RENDERIZADO EN PANTALLA ---
-    function renderMediaItem(container, item) {
+    function renderMediaItem(container, item, section, index, mediaUrl) {
       const wrapper = document.createElement('div');
       wrapper.className = 'media-item';
+      wrapper.onclick = () => openLightbox(section, index);
 
       const deleteBtn = document.createElement('button');
       deleteBtn.className = 'delete-btn';
@@ -625,20 +744,21 @@
         deleteItem(item.id);
       };
 
-      const mediaUrl = URL.createObjectURL(item.blob);
       let element;
 
       if (item.tipo === 'foto' || item.tipo === 'image') {
         element = document.createElement('img');
         element.src = mediaUrl;
-        element.onclick = () => openLightbox('image', mediaUrl);
       } else {
         element = document.createElement('video');
         element.src = mediaUrl;
-        element.controls = true;
-        element.onclick = (e) => {
-          if (e.target === element) openLightbox('video', mediaUrl);
-        };
+        element.controls = false;
+        element.muted = true;
+        element.preload = 'metadata';
+        const videoBadge = document.createElement('div');
+        videoBadge.className = 'video-badge';
+        videoBadge.innerHTML = '<i class="fa-solid fa-play"></i>';
+        wrapper.appendChild(videoBadge);
       }
 
       wrapper.appendChild(deleteBtn);
@@ -646,9 +766,10 @@
       container.prepend(wrapper);
     }
 
-    function renderUploadedMediaItem(container, item) {
+    function renderUploadedMediaItem(container, item, index) {
       const wrapper = document.createElement('div');
       wrapper.className = 'media-item';
+      wrapper.onclick = () => openLightbox('recuerdos', index);
 
       let element;
 
@@ -657,17 +778,16 @@
         element.src = item.url;
         element.alt = item.name;
         element.loading = 'lazy';
-        element.onclick = () => openLightbox('image', item.url);
       } else {
         element = document.createElement('video');
         element.src = item.url;
-        element.controls = true;
+        element.controls = false;
+        element.muted = true;
         element.preload = 'metadata';
-        element.onclick = (event) => {
-          if (event.target === element) {
-            openLightbox('video', item.url);
-          }
-        };
+        const videoBadge = document.createElement('div');
+        videoBadge.className = 'video-badge';
+        videoBadge.innerHTML = '<i class="fa-solid fa-play"></i>';
+        wrapper.appendChild(videoBadge);
       }
 
       wrapper.appendChild(element);
@@ -791,24 +911,67 @@
       closeCamera();
     }
 
-    function openLightbox(type, src) {
+    function renderLightboxItem() {
       const lightbox = document.getElementById('lightbox');
       const body = document.getElementById('lightbox-body');
-      body.innerHTML = '';
+      const prevButton = document.getElementById('lightbox-prev');
+      const nextButton = document.getElementById('lightbox-next');
+      const items = activeLightboxSection ? (galleryMedia[activeLightboxSection] || []) : [];
 
-      if (type === 'image') {
+      if (activeLightboxIndex < 0 || activeLightboxIndex >= items.length) {
+        return;
+      }
+
+      const currentItem = items[activeLightboxIndex];
+      body.innerHTML = '';
+      const meta = document.createElement('div');
+      meta.className = 'lightbox-meta';
+      meta.textContent = `${activeLightboxIndex + 1} / ${items.length}${currentItem.name ? ` - ${currentItem.name}` : ''}`;
+
+      if (currentItem.type === 'image') {
         const img = document.createElement('img');
-        img.src = src;
+        img.src = currentItem.url;
         body.appendChild(img);
       } else {
         const video = document.createElement('video');
-        video.src = src;
+        video.src = currentItem.url;
         video.controls = true;
         video.autoplay = true;
         body.appendChild(video);
       }
 
+      body.appendChild(meta);
+      prevButton.disabled = activeLightboxIndex <= 0;
+      nextButton.disabled = activeLightboxIndex >= items.length - 1;
       lightbox.classList.add('active');
+    }
+
+    function openLightbox(section, index) {
+      const items = galleryMedia[section] || [];
+
+      if (index < 0 || index >= items.length) {
+        return;
+      }
+
+      activeLightboxSection = section;
+      activeLightboxIndex = index;
+      renderLightboxItem();
+    }
+
+    function navigateLightbox(direction) {
+      if (!activeLightboxSection) {
+        return;
+      }
+
+      const items = galleryMedia[activeLightboxSection] || [];
+      const nextIndex = activeLightboxIndex + direction;
+
+      if (nextIndex < 0 || nextIndex >= items.length) {
+        return;
+      }
+
+      activeLightboxIndex = nextIndex;
+      renderLightboxItem();
     }
 
     function closeLightbox(event) {
@@ -816,6 +979,8 @@
         const lightbox = document.getElementById('lightbox');
         lightbox.classList.remove('active');
         document.getElementById('lightbox-body').innerHTML = '';
+        activeLightboxSection = null;
+        activeLightboxIndex = -1;
       }
     }
 
@@ -852,6 +1017,34 @@
     window.addEventListener('pageshow', () => {
       loadStoredMedia();
       loadUploadedMemories();
+    });
+
+    document.getElementById('lightbox-prev').addEventListener('click', (event) => {
+      event.stopPropagation();
+      navigateLightbox(-1);
+    });
+
+    document.getElementById('lightbox-next').addEventListener('click', (event) => {
+      event.stopPropagation();
+      navigateLightbox(1);
+    });
+
+    document.addEventListener('keydown', (event) => {
+      const lightbox = document.getElementById('lightbox');
+
+      if (!lightbox.classList.contains('active')) {
+        return;
+      }
+
+      if (event.key === 'ArrowLeft') {
+        navigateLightbox(-1);
+      } else if (event.key === 'ArrowRight') {
+        navigateLightbox(1);
+      } else if (event.key === 'Escape') {
+        closeLightbox({
+          target: { id: 'lightbox' }
+        });
+      }
     });
   </script>
 </body>

@@ -273,6 +273,10 @@
       background: #120c08;
     }
 
+    .preview video {
+      cursor: pointer;
+    }
+
     .preview-caption {
       padding: 0.9rem 1rem;
       color: var(--text-muted);
@@ -300,6 +304,64 @@
       background: linear-gradient(135deg, var(--success), #5f8f52);
       font-weight: 700;
       color: #10210f;
+    }
+
+    .video-preview-hint {
+      display: none;
+      padding: 0 1rem 1rem;
+      color: var(--accent-gold);
+      font-size: 0.88rem;
+      text-align: center;
+    }
+
+    .video-preview-hint.active {
+      display: block;
+    }
+
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.9);
+      padding: 1rem;
+      z-index: 1000;
+    }
+
+    .lightbox.active {
+      display: flex;
+    }
+
+    .lightbox-dialog {
+      position: relative;
+      width: min(92vw, 720px);
+      max-height: 90vh;
+      background: rgba(31, 20, 14, 0.96);
+      border: 1px solid rgba(212, 163, 115, 0.24);
+      border-radius: 18px;
+      padding: 2.4rem 1rem 1rem;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+    }
+
+    .lightbox-dialog video {
+      width: 100%;
+      max-height: 76vh;
+      border-radius: 12px;
+      background: #120c08;
+    }
+
+    .lightbox-close {
+      position: absolute;
+      top: 0.6rem;
+      right: 0.8rem;
+      border: 0;
+      background: transparent;
+      color: var(--text-light);
+      font-size: 2rem;
+      line-height: 1;
+      cursor: pointer;
+      padding: 0.2rem 0.4rem;
     }
 
     canvas {
@@ -358,8 +420,9 @@
 
       <div id="previewCard" class="preview">
         <img id="photoPreview" alt="Vista previa de la foto">
-        <video id="videoPreview" controls playsinline></video>
+        <video id="videoPreview" playsinline muted></video>
         <div id="previewCaption" class="preview-caption"></div>
+        <div id="videoPreviewHint" class="video-preview-hint">Toca el video para abrirlo y reproducirlo.</div>
         <div class="preview-actions">
           <button id="btnUpload" type="button" disabled>
             <i class="fa-solid fa-cloud-arrow-up"></i> SUBIR
@@ -393,6 +456,13 @@
 
   <canvas id="photoCanvas"></canvas>
 
+  <div id="videoLightbox" class="lightbox" aria-hidden="true">
+    <div class="lightbox-dialog">
+      <button id="closeVideoLightbox" class="lightbox-close" type="button" aria-label="Cerrar visor">&times;</button>
+      <video id="lightboxVideo" controls playsinline></video>
+    </div>
+  </div>
+
   <script>
     let currentStream = null;
     let facingMode = 'environment';
@@ -412,7 +482,11 @@
     const photoPreview = document.getElementById('photoPreview');
     const videoPreview = document.getElementById('videoPreview');
     const previewCaption = document.getElementById('previewCaption');
+    const videoPreviewHint = document.getElementById('videoPreviewHint');
     const btnUpload = document.getElementById('btnUpload');
+    const videoLightbox = document.getElementById('videoLightbox');
+    const lightboxVideo = document.getElementById('lightboxVideo');
+    const closeVideoLightbox = document.getElementById('closeVideoLightbox');
     let lastCapturedBlob = null;
     let lastCapturedExtension = '';
 
@@ -457,6 +531,7 @@
       videoPreview.removeAttribute('src');
       videoPreview.load();
       videoPreview.style.display = 'none';
+      videoPreviewHint.classList.remove('active');
       previewCaption.textContent = 'Vista previa de la ultima foto capturada.';
       previewCard.classList.add('active');
       btnUpload.disabled = false;
@@ -468,13 +543,36 @@
       lastCapturedExtension = blob.type.includes('mp4') ? 'mp4' : 'webm';
       const objectUrl = URL.createObjectURL(blob);
       videoPreview.src = objectUrl;
+      videoPreview.currentTime = 0;
+      videoPreview.pause();
       videoPreview.style.display = 'block';
       photoPreview.removeAttribute('src');
       photoPreview.style.display = 'none';
+      videoPreviewHint.classList.add('active');
       previewCaption.textContent = 'Vista previa del ultimo video grabado.';
       previewCard.classList.add('active');
       btnUpload.disabled = false;
       scrollToPreview();
+    }
+
+    function openVideoLightbox() {
+      if (!videoPreview.src) {
+        return;
+      }
+
+      lightboxVideo.src = videoPreview.src;
+      lightboxVideo.currentTime = 0;
+      videoLightbox.classList.add('active');
+      videoLightbox.setAttribute('aria-hidden', 'false');
+      lightboxVideo.play().catch(() => {});
+    }
+
+    function closeLightbox() {
+      lightboxVideo.pause();
+      lightboxVideo.removeAttribute('src');
+      lightboxVideo.load();
+      videoLightbox.classList.remove('active');
+      videoLightbox.setAttribute('aria-hidden', 'true');
     }
 
     async function startCamera() {
@@ -612,6 +710,19 @@
       } finally {
         btnUpload.disabled = false;
         btnUpload.innerHTML = '<i class="fa-solid fa-cloud-arrow-up"></i> SUBIR';
+      }
+    });
+
+    videoPreview.addEventListener('click', openVideoLightbox);
+    closeVideoLightbox.addEventListener('click', closeLightbox);
+    videoLightbox.addEventListener('click', (event) => {
+      if (event.target === videoLightbox) {
+        closeLightbox();
+      }
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && videoLightbox.classList.contains('active')) {
+        closeLightbox();
       }
     });
 
