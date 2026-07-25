@@ -325,11 +325,82 @@
       align-items: center;
       justify-content: center;
       z-index: 10;
-      transition: background 0.2s;
+      transition: background 0.2s, opacity 0.2s ease, transform 0.2s ease;
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+
+    .media-item:hover .delete-btn,
+    .media-item:focus-within .delete-btn {
+      opacity: 1;
+      transform: translateY(0);
     }
 
     .delete-btn:hover {
       background: var(--danger);
+    }
+
+    .confirm-modal {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.72);
+      z-index: 1200;
+      padding: 1rem;
+    }
+
+    .confirm-modal.active {
+      display: flex;
+    }
+
+    .confirm-dialog {
+      width: min(92vw, 420px);
+      background: var(--bg-card);
+      border: 1px solid rgba(212, 163, 115, 0.24);
+      border-radius: 16px;
+      padding: 1.5rem;
+      box-shadow: 0 18px 36px rgba(0, 0, 0, 0.4);
+    }
+
+    .confirm-dialog h4 {
+      font-family: 'Playfair Display', serif;
+      color: var(--accent-gold);
+      margin-bottom: 0.75rem;
+      font-size: 1.45rem;
+    }
+
+    .confirm-dialog p {
+      color: var(--text-light);
+      line-height: 1.6;
+    }
+
+    .confirm-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.8rem;
+      margin-top: 1.4rem;
+    }
+
+    .confirm-actions button {
+      border: 0;
+      border-radius: 999px;
+      padding: 0.75rem 1.4rem;
+      font: inherit;
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .confirm-no {
+      background: rgba(127, 85, 57, 0.3);
+      color: var(--text-light);
+      border: 1px solid rgba(212, 163, 115, 0.25);
+    }
+
+    .confirm-yes {
+      background: rgba(230, 57, 70, 0.9);
+      color: #fff;
     }
 
     /* Visor de Cámara */
@@ -585,6 +656,14 @@
           <input type="file" accept="image/*,video/*" multiple style="display: none;" onchange="handleFileInput(this.files, 'proceso')">
         </label>
 
+        <div id="proceso-upload-status" class="upload-status">
+          <div id="proceso-upload-message">Preparando subida...</div>
+          <div class="upload-progress">
+            <div id="proceso-upload-progress" class="upload-progress-bar"></div>
+          </div>
+        </div>
+
+        <div class="empty-state" id="empty-proceso">No existen archivos del proceso aún.</div>
         <div class="media-grid" id="grid-proceso"></div>
       </div>
     </section>
@@ -603,6 +682,17 @@
     <div class="modal-content-wrapper" id="lightbox-body"></div>
   </div>
 
+  <div id="confirm-modal" class="confirm-modal" aria-hidden="true">
+    <div class="confirm-dialog">
+      <h4>Confirmar borrado</h4>
+      <p id="confirm-message">¿Seguro que quieres borrar este elemento?</p>
+      <div class="confirm-actions">
+        <button id="confirm-no" class="confirm-no" type="button">No</button>
+        <button id="confirm-yes" class="confirm-yes" type="button">Sí</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Librería del Código QR -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
@@ -612,6 +702,7 @@
     let db = null;
     let uploadedMemoriesRequestId = 0;
     let uploadedFamilyRequestId = 0;
+    let uploadedProcesoRequestId = 0;
     const galleryMedia = {
       recuerdos: [],
       familia: [],
@@ -619,6 +710,7 @@
     };
     let activeLightboxSection = null;
     let activeLightboxIndex = -1;
+    let pendingConfirmResolver = null;
     const DB_NAME = "Karen50MediaDB";
     const STORE_NAME = "elementos";
 
@@ -820,17 +912,129 @@
       }
     }
 
-    async function deleteItem(id) {
-      if (confirm('¿Seguro que deseas eliminar este recuerdo?')) {
-        try {
-          const database = await initDB();
-          const tx = database.transaction([STORE_NAME], "readwrite");
-          const store = tx.objectStore(STORE_NAME);
-          store.delete(id);
-          tx.oncomplete = () => loadStoredMedia();
-        } catch (err) {
-          console.error("Error al eliminar:", err);
+    async function loadUploadedProceso() {
+      const grid = document.getElementById('grid-proceso');
+      const emptyState = document.getElementById('empty-proceso');
+
+      if (!grid || !emptyState) return;
+
+      const requestId = ++uploadedProcesoRequestId;
+
+      grid.innerHTML = '';
+      emptyState.textContent = 'Cargando archivos del proceso...';
+      emptyState.style.display = 'block';
+
+      try {
+        const response = await fetch('/api/list.php?category=proceso', {
+          cache: 'no-store'
+        });
+        const payload = await response.json();
+
+        if (!response.ok || !payload.ok) {
+          throw new Error(payload.error || 'No se pudieron cargar los archivos del proceso.');
         }
+
+        if (requestId !== uploadedProcesoRequestId) {
+          return;
+        }
+
+        const files = Array.isArray(payload.files) ? payload.files.slice() : [];
+        files.sort((left, right) => left.name.localeCompare(right.name));
+        galleryMedia.proceso = files.map((file) => ({
+          type: file.type,
+          url: file.url,
+          name: file.name
+        }));
+
+        if (files.length === 0) {
+          emptyState.textContent = 'No existen archivos del proceso aún.';
+          return;
+        }
+
+        emptyState.style.display = 'none';
+
+        files.forEach((file, index) => {
+          renderUploadedMediaItem(grid, file, index, 'proceso');
+        });
+      } catch (err) {
+        if (requestId !== uploadedProcesoRequestId) {
+          return;
+        }
+        console.error('Error al cargar archivos del proceso:', err);
+        emptyState.textContent = 'No se pudieron cargar los archivos del proceso.';
+      }
+    }
+
+    async function deleteItem(id) {
+      if (!(await askForDeletionConfirmation())) {
+        return;
+      }
+
+      try {
+        const database = await initDB();
+        const tx = database.transaction([STORE_NAME], "readwrite");
+        const store = tx.objectStore(STORE_NAME);
+        store.delete(id);
+        tx.oncomplete = () => loadStoredMedia();
+      } catch (err) {
+        console.error("Error al eliminar:", err);
+      }
+    }
+
+    function askForDeletionConfirmation() {
+      const modal = document.getElementById('confirm-modal');
+
+      modal.classList.add('active');
+      modal.setAttribute('aria-hidden', 'false');
+
+      return new Promise((resolve) => {
+        pendingConfirmResolver = resolve;
+      });
+    }
+
+    function resolveDeletionConfirmation(result) {
+      const modal = document.getElementById('confirm-modal');
+
+      modal.classList.remove('active');
+      modal.setAttribute('aria-hidden', 'true');
+
+      if (pendingConfirmResolver) {
+        pendingConfirmResolver(result);
+        pendingConfirmResolver = null;
+      }
+    }
+
+    async function deleteUploadedFile(section, filename) {
+      if (!(await askForDeletionConfirmation())) {
+        return;
+      }
+
+      try {
+        const formData = new FormData();
+        formData.append('category', section);
+        formData.append('filename', filename);
+
+        const response = await fetch('/api/delete.php', {
+          method: 'POST',
+          body: formData
+        });
+
+        const payload = await response.json();
+
+        if (!response.ok || !payload.ok) {
+          throw new Error(payload.error || 'No se pudo eliminar el archivo.');
+        }
+
+        if (section === 'recuerdos') {
+          await loadUploadedMemories();
+        } else if (section === 'familia') {
+          await loadUploadedFamily();
+        } else if (section === 'proceso') {
+          await loadUploadedProceso();
+        }
+      } catch (err) {
+        console.error('Error al eliminar archivo subido:', err);
+        alert(err.message || 'No se pudo eliminar el archivo.');
       }
     }
 
@@ -875,6 +1079,16 @@
       wrapper.className = 'media-item';
       wrapper.onclick = () => openLightbox(section, index);
 
+      const deleteBtn = document.createElement('button');
+      deleteBtn.className = 'delete-btn';
+      deleteBtn.type = 'button';
+      deleteBtn.setAttribute('aria-label', 'Borrar elemento');
+      deleteBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
+      deleteBtn.onclick = (event) => {
+        event.stopPropagation();
+        deleteUploadedFile(section, item.name);
+      };
+
       let element;
 
       if (item.type === 'image') {
@@ -894,6 +1108,7 @@
         wrapper.appendChild(videoBadge);
       }
 
+      wrapper.appendChild(deleteBtn);
       wrapper.appendChild(element);
       container.appendChild(wrapper);
     }
@@ -1006,6 +1221,30 @@
         } catch (err) {
           console.error('Error subiendo saludos:', err);
           setUploadStatus('familia', err.message || 'No se pudo subir el video.', 0, 'error');
+        }
+        return;
+      }
+
+      if (section === 'proceso') {
+        try {
+          setUploadStatus('proceso', 'Iniciando subida...', 0);
+
+          let uploadedCount = 0;
+          const processFiles = Array.from(files);
+
+          for (const file of processFiles) {
+            await uploadMediaFile(file, 'proceso', (progress) => {
+              setUploadStatus('proceso', `Subiendo ${file.name}... ${progress}%`, progress);
+            });
+            uploadedCount += 1;
+          }
+
+          setUploadStatus('proceso', `Se subieron correctamente ${uploadedCount} archivo(s).`, 100, 'success');
+          await loadUploadedProceso();
+          clearUploadStatus('proceso', 3500);
+        } catch (err) {
+          console.error('Error subiendo archivos del proceso:', err);
+          setUploadStatus('proceso', err.message || 'No se pudo subir el archivo.', 0, 'error');
         }
         return;
       }
@@ -1171,6 +1410,7 @@
       loadStoredMedia();
       loadUploadedMemories();
       loadUploadedFamily();
+      loadUploadedProceso();
 
       // Generar código QR apuntando a camara.html
       const currentUrl = window.location.href.split('?')[0].replace('index.html', '');
@@ -1200,6 +1440,7 @@
       loadStoredMedia();
       loadUploadedMemories();
       loadUploadedFamily();
+      loadUploadedProceso();
     });
 
     document.getElementById('lightbox-prev').addEventListener('click', (event) => {
@@ -1212,8 +1453,28 @@
       navigateLightbox(1);
     });
 
+    document.getElementById('confirm-yes').addEventListener('click', () => {
+      resolveDeletionConfirmation(true);
+    });
+
+    document.getElementById('confirm-no').addEventListener('click', () => {
+      resolveDeletionConfirmation(false);
+    });
+
+    document.getElementById('confirm-modal').addEventListener('click', (event) => {
+      if (event.target.id === 'confirm-modal') {
+        resolveDeletionConfirmation(false);
+      }
+    });
+
     document.addEventListener('keydown', (event) => {
       const lightbox = document.getElementById('lightbox');
+      const confirmModal = document.getElementById('confirm-modal');
+
+      if (confirmModal.classList.contains('active') && event.key === 'Escape') {
+        resolveDeletionConfirmation(false);
+        return;
+      }
 
       if (!lightbox.classList.contains('active')) {
         return;

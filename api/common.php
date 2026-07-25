@@ -19,6 +19,7 @@ const ALLOWED_MIME_TYPES = [
 const ALLOWED_CATEGORIES = [
     'recuerdos',
     'familia',
+    'proceso',
 ];
 
 function baseMediaDirectory(): string
@@ -166,4 +167,30 @@ function publicFileUrl(string $filename, ?string $category = null): string
     }
 
     return $baseUrl . '/' . rawurlencode($category) . '/' . rawurlencode($filename);
+}
+
+function requestedFilename(): string
+{
+    $filename = $_REQUEST['filename'] ?? '';
+
+    if (!is_string($filename) || $filename === '') {
+        jsonResponse(400, [
+            'ok' => false,
+            'error' => 'Nombre de archivo no valido.',
+        ]);
+    }
+
+    if (basename($filename) !== $filename || str_contains($filename, "\0")) {
+        jsonResponse(400, [
+            'ok' => false,
+            'error' => 'Nombre de archivo inseguro.',
+        ]);
+    }
+
+    return $filename;
+}
+
+function mediaFilePath(string $filename, ?string $category = null): string
+{
+    return mediaDirectory($category) . '/' . $filename;
 }
